@@ -56,6 +56,11 @@ class Report(object):
             'sftzrychbwhhl', 'tccx', 'tchbcc', 'tcjcms', 'tcjtfs', 'tcjtfsbz', 'tcyhbwhrysfjc', 'tczwh',
         ]
 
+        self.proxies = {
+          "http": "socks5h://127.0.0.1:1080",
+          "https": "socks5h://127.0.0.1:1080"
+        }
+
     @staticmethod
     def new_session():
         sess = requests.session()
@@ -68,7 +73,7 @@ class Report(object):
 
         self.session = self.new_session()
         url_sso = self.urls['sso']
-        response = self.session.get(url_sso)
+        response = self.session.get(url_sso, proxies=self.proxies)
         jsessionid = dict_from_cookiejar(response.cookies)['JSESSIONID']
         url_login = self.urls['login'].format(jsessionid)
         logging.debug(f'GET {url_sso} {response.status_code}')
@@ -87,7 +92,7 @@ class Report(object):
         }
 
         # 禁用跳转，用于处理登录失败的问题
-        response = self.session.post(url_login, params=params, allow_redirects=False)
+        response = self.session.post(url_login, params=params, allow_redirects=False, proxies=self.proxies)
         logging.debug(f'POST {url_login} {response.status_code}')
 
         if response.status_code == 200:
@@ -98,7 +103,7 @@ class Report(object):
 
         # 登录成功，继续跳转，更新 cookie
         next_url = response.next.url
-        response = self.session.get(next_url)
+        response = self.session.get(next_url, proxies=self.proxies)
         logging.debug(f'GET {next_url} {response.status_code}')
 
         logging.info(f"认证系统登录成功。")
@@ -108,7 +113,7 @@ class Report(object):
 
         # 查询今天是否已生成上报信息，并获得 ID
         url_csh = self.urls['csh']
-        response = self.session.post(url_csh)
+        response = self.session.post(url_csh, proxies=self.proxies)
         result = response.json()
         logging.debug(f'POST {url_csh} {response.status_code}')
 
@@ -116,7 +121,7 @@ class Report(object):
             logging.warning("新增每日上报信息失败！")
 
             url_check = self.urls['check']
-            response = self.session.post(url_check)
+            response = self.session.post(url_check, proxies=self.proxies)
             today_report = response.json()['module']['data'][0]
             logging.debug(f'POST {url_check} {response.status_code}')
 
@@ -137,7 +142,7 @@ class Report(object):
         # 获取每日上报信息的模板
         url_msg = self.urls['get']
         params = {'info': json.dumps({'id': module})}
-        response = self.session.post(url_msg, params=params)
+        response = self.session.post(url_msg, params=params, proxies=self.proxies)
         data_orig = response.json()['module']['data'][0]
         logging.debug(f'POST {url_msg} {response.status_code}')
 
@@ -148,7 +153,7 @@ class Report(object):
         logging.info(f"生成上报信息成功。今日体温：{temperature}℃")
 
         url_save = self.urls['save']
-        response = self.session.post(url_save, params=report_info)
+        response = self.session.post(url_save, params=report_info, proxies=self.proxies)
         logging.debug(f'POST {url_save} {response.status_code}')
 
         if not response.json().get('isSuccess'):
@@ -166,7 +171,6 @@ def main(args):
     r = Report(args)
 
     try:
-        wait_a_minute("准备就绪，等待{}秒后运行。")
         r.student_login()
     except ReportException.LoginError:
         wait_a_minute("登录失败，等待{}秒后重试。", 1)
@@ -194,17 +198,20 @@ if __name__ == '__main__':
     except ReportException.LoginError as e:
         report_msg = f"登陆失败！原因：{e}"
         logging.error(report_msg)
+        raise ReportException(report_msg)
     except ReportException.SubmitError as e:
         report_msg = f"上报失败！原因：{e}"
         logging.error(report_msg)
+        raise ReportException(report_msg)
     except Exception as e:
         report_msg = f"上报失败！其他错误：{e}"
         logging.critical(report_msg)
+        raise ReportException(report_msg)
     else:
         report_msg = f"今日疫情状态上报成功。"
         logging.warning(report_msg)
-
-    if arguments.sckey:
-        current = datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
-        requests.get(f"https://sc.ftqq.com/{arguments.sckey}.send?text={report_msg}{current}")
-        logging.info("微信提醒消息已发送。")
+    finally:
+        if arguments.sckey:
+            current = datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
+            requests.get(f"https://sc.ftqq.com/{arguments.sckey}.send?text={report_msg}{current}")
+            logging.info("微信提醒消息已发送。")
