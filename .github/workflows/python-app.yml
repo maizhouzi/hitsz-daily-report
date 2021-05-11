@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "15 16 * * *"
+    - cron: "0 0 * * *"
 
 jobs:
-  start_reporting:
+  Report:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Start EasyConnect docker
+      - name: Start Easy Connect dockers
         shell: bash
         run: |
           touch ~/.easyconn
@@ -31,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Check VPN status
+      - name: Check VPN connections status
         shell: bash
         run: |
           docker container ls
