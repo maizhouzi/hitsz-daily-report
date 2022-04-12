@@ -46,6 +46,6 @@ jobs:
           USERNAME: ${{ secrets.username }}
           PASSWORD: ${{ secrets.password }}
           GRADUATING: ${{ secrets.graduating }}
-          API_KEY: ${{ secrets.api_key }}
+          BARK_KEY: ${{ secrets.bark_key }}
         run: |
-          python report.py "$USERNAME" "$PASSWORD" -k="$API_KEY" -p
+          python report.py "$USERNAME" "$PASSWORD" -k="$BARK_KEY" -p

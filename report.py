@@ -254,5 +254,5 @@ if __name__ == '__main__':
     finally:
         current = datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
         if arguments.sckey:
-            requests.get(f'https://sc.ftqq.com/{arguments.sckey}.send?text={report_msg}{current}')
-            logging.info("微信提醒消息已发送。")
+            requests.get(f"https://api.day.app/{arguments.sckey}/{report_msg}{current}")
+            logging.info("BARK消息已发送更新。")
